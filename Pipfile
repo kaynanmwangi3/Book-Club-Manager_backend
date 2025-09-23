@@ -10,7 +10,7 @@ flask-migrate = "*"
 flask-sqlalchemy = "*"
 sqlalchemy-serializer = "*"
 flask-restful = "*"
-
+faker = "*"
 
 [dev-packages]
 

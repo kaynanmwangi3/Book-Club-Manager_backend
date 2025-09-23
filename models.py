@@ -4,14 +4,14 @@ from datetime import datetime
 
 db = SQLAlchemy()
 
-class User(db.Model):
+class User(db.Model, SerializerMixin):
     __tablename__ = "users" 
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.String(100), nullable=False)
-    phone_number = db.Column(db.Integer)
+    phone_number = db.Column(db.String(15), unique=True, nullable=False)
     join_date = db.Column(db.DateTime, default=datetime.utcnow)
 
     books = db.relationship("Book", back_populates="owner", cascade="all, delete-orphan")
@@ -19,7 +19,7 @@ class User(db.Model):
     serialize_rules = ("-books.owner", "-club_memberships.member")
 
 
-class Book(db.Model):
+class Book(db.Model, SerializerMixin):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     author = db.Column(db.String(100), nullable=False)
