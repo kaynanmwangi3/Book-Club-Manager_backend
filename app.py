@@ -198,3 +198,21 @@ def update_book(id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "message": "An error occurred while updating the book"}), 500
+
+@app.route('/books/<int:id>', methods=['DELETE'])
+def delete_book(id):
+    book = Book.query.get(id)
+    
+    if not book:
+        return jsonify({"success": False, "message": "Book not found"}), 404
+    
+    try:
+        db.session.delete(book)
+        db.session.commit()
+        return jsonify({"success": True, "message": "Book deleted successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": "An error occurred while deleting the book"}), 500
+
+if __name__ == '__main__':
+    app.run(debug=True)
