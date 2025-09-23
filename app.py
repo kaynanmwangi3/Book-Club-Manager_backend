@@ -136,3 +136,31 @@ def get_book(id):
     if not book:
         return jsonify({"success": False, "message": "Book not found"}), 404
     return jsonify({"success": True, "book": book.to_dict()}), 200
+
+@app.route('/books', methods=['POST'])
+def add_book():
+    data = request.get_json()
+    
+    title = data.get('title')
+    author = data.get('author')
+    
+    if not (title and author):
+        return jsonify({"error": "Title and author are required"}), 400
+    
+    book = Book(
+        title=title,
+        author=author,
+        description=data.get('description'),
+        publish_year=data.get('publish_year'),
+        genre=data.get('genre'),
+        rating=data.get('rating'),
+        reviews=data.get('reviews'),
+        member_id=data.get('member_id'),
+        club_id=data.get('club_id')
+    )
+    
+    db.session.add(book)
+    db.session.commit()
+    
+    return jsonify({"success": True, "message": "Book added successfully", "book": book.to_dict()}), 201
+ 
