@@ -164,3 +164,37 @@ def add_book():
     
     return jsonify({"success": True, "message": "Book added successfully", "book": book.to_dict()}), 201
  
+@app.route('/books/<int:id>', methods=['PATCH'])
+def update_book(id):
+    book = Book.query.get(id)
+    
+    if not book:
+        return jsonify({"success": False, "message": "Book not found"}), 404
+    
+    data = request.get_json()
+    
+    if 'title' in data:
+        book.title = data['title']
+    if 'author' in data:
+        book.author = data['author']
+    if 'description' in data:
+        book.description = data['description']
+    if 'publish_year' in data:
+        book.publish_year = data['publish_year']
+    if 'genre' in data:
+        book.genre = data['genre']
+    if 'rating' in data:
+        book.rating = data['rating']
+    if 'reviews' in data:
+        book.reviews = data['reviews']
+    if 'member_id' in data:
+        book.member_id = data['member_id']
+    if 'club_id' in data:
+        book.club_id = data['club_id']
+    
+    try:
+        db.session.commit()
+        return jsonify({"success": True, "message": "Book updated successfully", "book": book.to_dict()}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": "An error occurred while updating the book"}), 500
