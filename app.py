@@ -129,3 +129,10 @@ def delete_user(id):
 def get_books():
     books = Book.query.all()
     return jsonify({"success": True, "books": [book.to_dict() for book in books]}), 200
+
+@app.route('/books/<int:id>', methods=['GET'])
+def get_book(id):
+    book = Book.query.get(id)
+    if not book:
+        return jsonify({"success": False, "message": "Book not found"}), 404
+    return jsonify({"success": True, "book": book.to_dict()}), 200
