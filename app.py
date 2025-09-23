@@ -123,3 +123,9 @@ def delete_user(id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"success":False, "message":"An error occurred while deleting the user"}), 500
+
+# Book routes
+@app.route('/books', methods=['GET'])
+def get_books():
+    books = Book.query.all()
+    return jsonify({"success": True, "books": [book.to_dict() for book in books]}), 200
