@@ -123,3 +123,96 @@ def delete_user(id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"success":False, "message":"An error occurred while deleting the user"}), 500
+
+# Book routes
+@app.route('/books', methods=['GET'])
+def get_books():
+    books = Book.query.all()
+    return jsonify({"success": True, "books": [book.to_dict() for book in books]}), 200
+
+@app.route('/books/<int:id>', methods=['GET'])
+def get_book(id):
+    book = Book.query.get(id)
+    if not book:
+        return jsonify({"success": False, "message": "Book not found"}), 404
+    return jsonify({"success": True, "book": book.to_dict()}), 200
+
+@app.route('/books', methods=['POST'])
+def add_book():
+    data = request.get_json()
+    
+    title = data.get('title')
+    author = data.get('author')
+    
+    if not (title and author):
+        return jsonify({"error": "Title and author are required"}), 400
+    
+    book = Book(
+        title=title,
+        author=author,
+        description=data.get('description'),
+        publish_year=data.get('publish_year'),
+        genre=data.get('genre'),
+        rating=data.get('rating'),
+        reviews=data.get('reviews'),
+        member_id=data.get('member_id'),
+        club_id=data.get('club_id')
+    )
+    
+    db.session.add(book)
+    db.session.commit()
+    
+    return jsonify({"success": True, "message": "Book added successfully", "book": book.to_dict()}), 201
+ 
+@app.route('/books/<int:id>', methods=['PATCH'])
+def update_book(id):
+    book = Book.query.get(id)
+    
+    if not book:
+        return jsonify({"success": False, "message": "Book not found"}), 404
+    
+    data = request.get_json()
+    
+    if 'title' in data:
+        book.title = data['title']
+    if 'author' in data:
+        book.author = data['author']
+    if 'description' in data:
+        book.description = data['description']
+    if 'publish_year' in data:
+        book.publish_year = data['publish_year']
+    if 'genre' in data:
+        book.genre = data['genre']
+    if 'rating' in data:
+        book.rating = data['rating']
+    if 'reviews' in data:
+        book.reviews = data['reviews']
+    if 'member_id' in data:
+        book.member_id = data['member_id']
+    if 'club_id' in data:
+        book.club_id = data['club_id']
+    
+    try:
+        db.session.commit()
+        return jsonify({"success": True, "message": "Book updated successfully", "book": book.to_dict()}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": "An error occurred while updating the book"}), 500
+
+@app.route('/books/<int:id>', methods=['DELETE'])
+def delete_book(id):
+    book = Book.query.get(id)
+    
+    if not book:
+        return jsonify({"success": False, "message": "Book not found"}), 404
+    
+    try:
+        db.session.delete(book)
+        db.session.commit()
+        return jsonify({"success": True, "message": "Book deleted successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": "An error occurred while deleting the book"}), 500
+
+if __name__ == '__main__':
+    app.run(debug=True)
