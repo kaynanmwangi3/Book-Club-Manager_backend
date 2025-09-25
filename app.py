@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from models import db, User, Book, Club 
+from models import db, User, Book, Club, UserBook
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 from datetime import datetime
@@ -50,24 +50,24 @@ def login():
     user = User.query.filter_by(name=name).first()
     if not user or not check_password_hash(user.password_hash, password):
         return jsonify({"success": False, "message": "Invalid name or password"}), 401
-    return jsonify({"success": True, "user": user.to_dict(only=('name','email','phone_number'))}), 200
+    return jsonify({"success": True, "user": user.to_dict(only=('name','email','phone_number','id'))}), 200
 
 @app.route('/users', methods=["GET"])
 def get_users():
     Users = User.query.all()
 
     if Users:
-        return jsonify({"success":True, "users": [user.to_dict(only=('name','email','phone_number')) for user in Users]}), 200
+        return jsonify({"success":True, "users": [user.to_dict() for user in Users]}), 200
     return jsonify({"success": False, "message": "No users found"}), 404
 
 @app.route('/users/<int:id>', methods=["GET"])
 def get_user(id):
     user = User.query.filter_by(id=id).first()
     if user:
-        return jsonify({"success": True, "user": user.to_dict(only=('name','email','phone_number'))}), 200
+        return jsonify({"success": True, "user": user.to_dict()}), 200
     return jsonify({"success": False, "message": "User not found"}), 404
 
-@app.route('/users/<int:id>', methods=['PUT'])
+@app.route('/users/<int:id>', methods=['PATCH'])
 def update_user(id):
     user = User.query.get(id)
 
@@ -77,7 +77,7 @@ def update_user(id):
     data = request.get_json()
 
     new_name = data.get('name')
-    if new_name != user.name:
+    if new_name is not None and new_name != user.name:
         existing_user = User.query.filter_by(name=new_name).first()
         # If there exists a user with this name, AND that user is NOT me
         if existing_user and existing_user.id != user.id:
@@ -85,14 +85,14 @@ def update_user(id):
         user.name = new_name
      
     new_email = data.get('email')
-    if new_email != user.email:
+    if new_email is not None and new_email != user.email:
         existing_user = User.query.filter_by(email=new_email).first()
         if existing_user and existing_user.id != user.id:
             return jsonify({"success":False, "message":"Email already taken"}), 409
         user.email = new_email
 
     new_phone_number = data.get('phone_number')
-    if new_phone_number != user.phone_number:
+    if new_phone_number is not None and new_phone_number != user.phone_number:
         existing_user = User.query.filter_by(phone_number=new_phone_number).first()
         if existing_user and existing_user.id != user.id:
             return jsonify({"success":False, "message":"Phone number already taken"}), 409
@@ -155,8 +155,6 @@ def add_book():
         genre=data.get('genre'),
         rating=data.get('rating'),
         reviews=data.get('reviews'),
-        member_id=data.get('member_id'),
-        club_id=data.get('club_id')
     )
     
     db.session.add(book)
@@ -189,8 +187,6 @@ def update_book(id):
         book.reviews = data['reviews']
     if 'member_id' in data:
         book.member_id = data['member_id']
-    if 'club_id' in data:
-        book.club_id = data['club_id']
     
     try:
         db.session.commit()
@@ -213,6 +209,117 @@ def delete_book(id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "message": "An error occurred while deleting the book"}), 500
+
+@app.route('/clubs', methods=["GET"])
+def get_clubs():
+    clubs = Club.query.all()
+    if clubs:
+        return jsonify({"success":True, "clubs": [club.to_dict() for club in clubs]}), 200
+    return jsonify({"success": False, "message": "No clubs found"}), 404
+
+@app.route('/clubs/<int:id>', methods=["GET"])
+def get_club(id):
+    club = Club.query.filter_by(id=id).first()
+    if club:
+        return jsonify({"success":True, "club": club.to_dict()}), 200
+    return jsonify({"success": False, "message": "Club not found"}), 404
+
+@app.route('/clubs', methods=["POST"])
+def add_club():
+    club = request.get_json()
+    name = club.get('name')
+    description = club.get('description')
+    meeting_date_str = club.get('meeting_date')
+
+    if not (name and description):
+        return jsonify({"error": "Missing required fields"}), 400
+
+        if Club.query.filter((name == club.name)).first():
+            return jsonify({"error": "Book Club with this name already exists"}), 400
+
+    meeting_date = datetime.strptime(meeting_date_str, '%Y-%m-%d %H:%M:%S') 
+        
+    new_club = Club(name=name, description=description, meeting_date=meeting_date)
+    db.session.add(new_club)
+    db.session.commit()
+    return jsonify({"success":True, "message": f" Book Club {name} created successfully"}), 201
+
+@app.route('/clubs/<int:id>', methods=['PATCH'])
+def update_club(id):
+    club = Club.query.get(id)
+
+    if not club:
+        return jsonify({"success":False, "message":"Club not found"}), 404
+
+    data = request.get_json()
+
+    new_name = data.get('name')
+    if new_name is not None and new_name != club.name:
+        existing_club = Club.query.filter_by(name=new_name).first()
+        # If there exists a club with this name, AND that club is NOT me
+        if existing_club and existing_club.id != club.id:
+            return jsonify({"success":False, "message":"Name already taken"}), 409
+        club.name = new_name
+     
+    new_description = data.get('description')
+    if new_description:
+        club.description = new_description
+
+    new_meeting_date_str = data.get("meeting_date")
+    if new_meeting_date_str:
+        try:
+            new_meeting_date = datetime.strptime(new_meeting_date_str, '%Y-%m-%d %H:%M:%S')
+            club.meeting_date = new_meeting_date
+        except ValueError:
+            return jsonify({"success": False, "message": "Invalid date format. Use 'YYYY-MM-DD HH:MM:SS'."}), 400
+
+    try:
+        db.session.commit()
+        return jsonify ({"success":True, "club":f"Club {club.name} updated successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success":False, "message":"An error occurred while updating the club"}), 500
+
+@app.route('/clubs/<int:id>', methods=['DELETE'])
+def delete_club(id):
+    club = Club.query.get(id)
+
+    if not club:
+        return jsonify({"success":False, "message":"Club not found"}), 404
+    try:
+        db.session.delete(club)
+        db.session.commit()
+        return jsonify({"sucess":True, "message":f"Club {club.name} deleted successfully"}), 200
+    except Exeption as e:
+        db.session.rollback()
+        return jsonify({"success":False, "message":"An error occurred while deleting the club"}), 500
+
+@app.route('/books/ownership/<int:book_id>/', methods=['POST'])
+def add_member_to_club(book_id):
+    data = request.get_json()
+    user_id = data.get('user_id')
+    role = data.get('role')
+
+    if not user_id:
+        return jsonify({"success": False, "message": "User ID is required"}), 400
+
+    book = UserBook.query.get(book_id)
+    if not book:
+        return jsonify({"success": False, "message": "Book not found"}), 404
+
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"success": False, "message": "User not found"}), 404
+
+    existing_ownership = UserBook.query.filter_by(book_id=book_id, user_id=user_id).first()
+    if existing_ownership:
+        return jsonify({"success": False, "message": "User is already has this book"}), 409
+
+    ownership = UserBook(book_id=book_id, user_id=user_id, role=role)
+    db.session.add(ownership)
+    db.session.commit()
+
+    return jsonify({"success": True}), 201
 
 if __name__ == '__main__':
     app.run(debug=True)
