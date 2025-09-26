@@ -13,7 +13,11 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
 migrate = Migrate(app, db)
-CORS(app)
+CORS(app, resources={
+    r"/*": {
+        "origins": ["https://book-club-manager-frontend.vercel.app"]
+    }
+})
 
 
 @app.route('/signup', methods=["POST"])
@@ -254,7 +258,7 @@ def add_club():
     new_club = Club(name=name, description=description, meeting_date=meeting_date)
     db.session.add(new_club)
     db.session.commit()
-    return jsonify({"success":True, "message": f" Book Club {name} created successfully"}), 201
+    return jsonify({"success":True, "message": f" Book Club {name} created successfully", "club": new_club.to_dict()}), 201
 
 @app.route('/clubs/<int:id>', methods=['PATCH'])
 def update_club(id):
