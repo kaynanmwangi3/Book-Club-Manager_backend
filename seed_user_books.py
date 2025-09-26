@@ -18,7 +18,7 @@ def seed_user_books():
             print("No users or books found. Please seed users and books first.")
             return
 
-        roles = ["owner", "borrower"]
+        roles = ["Owner", "Borrower"]
         user_books = []
         for _ in range(10):
             user_book = UserBook(

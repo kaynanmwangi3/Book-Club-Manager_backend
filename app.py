@@ -50,7 +50,7 @@ def login():
     user = User.query.filter_by(name=name).first()
     if not user or not check_password_hash(user.password_hash, password):
         return jsonify({"success": False, "message": "Invalid name or password"}), 401
-    return jsonify({"success": True, "user": user.to_dict(only=('name','email','phone_number','id'))}), 200
+    return jsonify({"success": True, "user": user.to_dict(only=('name','email','phone_number','id','club_id'))}), 200
 
 @app.route('/users', methods=["GET"])
 def get_users():
@@ -101,6 +101,15 @@ def update_user(id):
     new_password = data.get("password")
     if new_password:
         user.password_hash = generate_password_hash(new_password)
+
+    new_club_id = data.get('club_id')
+    if new_club_id is not None:
+        if new_club_id == user.club_id:
+            return jsonify({"success":False, "message":"User is already a member of this club"}), 409
+        club = Club.query.get(new_club_id)
+        if not club:
+            return jsonify({"success":False, "message":"Club not found"}), 404
+        user.club_id = new_club_id
 
     try:
         db.session.commit()
@@ -155,6 +164,7 @@ def add_book():
         genre=data.get('genre'),
         rating=data.get('rating'),
         reviews=data.get('reviews'),
+        image_url=data.get('image_url')
     )
     
     db.session.add(book)
@@ -187,6 +197,8 @@ def update_book(id):
         book.reviews = data['reviews']
     if 'member_id' in data:
         book.member_id = data['member_id']
+    if 'image_url' in data:
+        book.image_url = data['image_url']
     
     try:
         db.session.commit()
@@ -256,7 +268,6 @@ def update_club(id):
     new_name = data.get('name')
     if new_name is not None and new_name != club.name:
         existing_club = Club.query.filter_by(name=new_name).first()
-        # If there exists a club with this name, AND that club is NOT me
         if existing_club and existing_club.id != club.id:
             return jsonify({"success":False, "message":"Name already taken"}), 409
         club.name = new_name
@@ -320,6 +331,33 @@ def add_member_to_club(book_id):
     db.session.commit()
 
     return jsonify({"success": True}), 201
+
+@app.route('/clubs/clubmember/<int:club_id>', methods=['PATCH'])
+def addingclubmemeber(club_id):
+    data = request.get_json()
+    user_id = data.get('user_id')
+
+    if not user_id:
+        return jsonify({"success": False, "message": "User ID is required"}), 400
+
+    club = Club.query.get(club_id)
+    if not club:
+        return jsonify({"success": False, "message": "Club not found"}), 404
+
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"success": False, "message": "User not found"}), 404
+
+    if user.club_id is not None:
+        return jsonify({"success": False, "message": "User is already a member of another club"}), 409
+
+    if user.club_id == club_id:
+        return jsonify({"success": False, "message": "User is already a member of this club"}), 409
+
+    user.club_id = club_id
+    db.session.commit()
+
+    return jsonify({"success": True, "message": f"User {user.name} added to club {club.name}"}), 201
 
 if __name__ == '__main__':
     app.run(debug=True)
