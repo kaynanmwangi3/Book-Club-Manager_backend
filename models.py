@@ -30,11 +30,12 @@ class UserBook(db.Model, SerializerMixin):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     book_id = db.Column(db.Integer, db.ForeignKey("books.id"), nullable=False)
-    role = db.Column(db.String(50), default="owner")  # optional, e.g. "borrower", "owner"
+    role = db.Column(db.String(50), default="Owner")  
 
     user = db.relationship("User", back_populates="user_books")
     book = db.relationship("Book", back_populates="user_books")
 
+    # To avoid circular references during serialization(Maximum Recursion Depth Exceeded)
     serialize_rules = (
         "-user.user_books",   # prevent recursion into user → user_books
         "-book.user_books",   # prevent recursion into book → user_books
@@ -52,8 +53,9 @@ class Book(db.Model, SerializerMixin):
     description = db.Column(db.Text)
     publish_year = db.Column(db.Integer)
     genre = db.Column(db.String(50))
-    rating = db.Column(db.Integer)  # Rating out of 5
+    rating = db.Column(db.Integer)  
     reviews = db.Column(db.Text)
+    image_url = db.Column(db.String(200))
 
     # many-to-many with users
     user_books = db.relationship("UserBook", back_populates="book")
